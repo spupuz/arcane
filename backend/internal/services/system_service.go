@@ -268,7 +268,7 @@ func (s *SystemService) StopAllContainers(ctx context.Context) (*dto.ContainerAc
 	return s.performBatchContainerAction(ctx, containers, "stop",
 		func(c container.Summary) bool {
 			// Skip Arcane server container
-			return c.Labels == nil || c.Labels["com.ofkm.arcane.server"] != "true"
+			return c.Labels == nil || c.Labels["com.getarcaneapp.arcane.server"] != "true"
 		},
 		func(ctx context.Context, id string) error {
 			return s.containerService.StopContainer(ctx, id, systemUser)
