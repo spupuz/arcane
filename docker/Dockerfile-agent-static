@@ -25,8 +25,8 @@ LABEL org.opencontainers.image.authors="OFKM Technologies" \
     org.opencontainers.image.ref.name="arcane-agent" \
     org.opencontainers.image.title="Arcane Agent" \
     org.opencontainers.image.description="Arcane Agent" \
-    com.ofkm.arcane.updater="false" \
-    com.ofkm.arcane.server="true"
+    com.getarcaneapp.arcane.updater="false" \
+    com.getarcaneapp.arcane.server="true"
 
 EXPOSE 3553
 VOLUME ["/app/data"]
