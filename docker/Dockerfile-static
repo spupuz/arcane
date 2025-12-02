@@ -1,6 +1,7 @@
 FROM alpine:3
 
 ARG TARGETARCH
+ARG TARGETVARIANT
 ARG VERSION="dev"
 ARG REVISION="unknown"
 
@@ -8,7 +9,7 @@ WORKDIR /app
 RUN apk add --no-cache ca-certificates tzdata curl
 RUN mkdir -p /app/data
 
-COPY ./backend/.bin/arcane-linux-${TARGETARCH} ./arcane
+COPY ./backend/.bin/arcane-linux-${TARGETARCH}${TARGETVARIANT} ./arcane
 
 ENV ENVIRONMENT=production
 ENV GIN_MODE=release
