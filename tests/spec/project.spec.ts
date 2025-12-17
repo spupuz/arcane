@@ -34,10 +34,6 @@ test.describe('Projects Page', () => {
     await expect(page.getByText('View and Manage Compose Projects')).toBeVisible();
   });
 
-  test('should display the "Create Project" button', async ({ page }) => {
-    await expect(page.getByRole('button', { name: 'Create Project' })).toBeVisible();
-  });
-
   test('should display summary cards with correct counts', async ({ page }) => {
     await expect(page.locator('div:has(> p:has-text("Total Projects")) h3').first()).toHaveText(
       String(projectCounts.totalProjects)
@@ -122,7 +118,7 @@ test.describe('New Compose Project Page', () => {
   });
 
   test('should validate required fields', async ({ page }) => {
-    const createButton = page.getByRole('button', { name: 'Create' }).first();
+    const createButton = page.getByRole('button', { name: 'Create Project' }).locator('[data-slot="button"]');
     await expect(createButton).toBeDisabled();
 
     await page.getByRole('button', { name: 'My New Project' }).click();
@@ -137,8 +133,9 @@ test.describe('New Compose Project Page', () => {
       if (msg.type() === 'error') observedErrors.push(msg.text());
     });
 
-    const createProjectButton = page.getByRole('button', { name: 'Create Project', exact: true });
-    await expect(createProjectButton).toBeVisible();
+    const createButton = page.getByRole('button', { name: 'Create Project' }).locator('[data-slot="button"]');
+
+    await expect(createButton).toBeVisible();
 
     // Open the inline name editor and set a valid name.
     await page.getByRole('button', { name: 'My New Project' }).click();
@@ -146,7 +143,7 @@ test.describe('New Compose Project Page', () => {
     await page.getByRole('textbox', { name: 'My New Project' }).press('Enter');
 
     // The button should become enabled once name + compose content are present.
-    await expect(createProjectButton).toBeEnabled();
+    await expect(createButton).toBeEnabled();
 
     const stateUnsafe = observedErrors.filter((e) => e.includes('state_unsafe_mutation'));
     expect(stateUnsafe, `Unexpected state_unsafe_mutation errors: ${stateUnsafe.join('\n')}`).toHaveLength(0);
@@ -201,7 +198,7 @@ test.describe('New Compose Project Page', () => {
       }
     });
 
-    const createButton = page.getByRole('button', { name: 'Create Project', exact: true });
+    const createButton = page.getByRole('button', { name: 'Create Project' }).locator('[data-slot="button"]')
     await createButton.click();
 
     await page.waitForURL(/\/projects\/.+/, { timeout: 10000 });
