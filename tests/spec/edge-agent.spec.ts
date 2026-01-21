@@ -4,14 +4,6 @@ const ROUTES = {
   environments: "/environments",
 };
 
-function slugifyEdgeName(name: string) {
-  return name
-    .trim()
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/(^-|-$)+/g, "");
-}
-
 async function openNewEnvironmentSheet(page: Page) {
   await page.goto(ROUTES.environments);
   await page.waitForLoadState("networkidle");
