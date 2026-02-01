@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"log/slog"
 	"net/http"
 	"strconv"
@@ -140,7 +141,23 @@ func (j *AnalyticsJob) Run(ctx context.Context) {
 			defer resp.Body.Close()
 
 			if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-				return struct{}{}, fmt.Errorf("request failed with status: %d", resp.StatusCode)
+				respBody, _ := io.ReadAll(io.LimitReader(resp.Body, 8*1024))
+				bodyText := strings.TrimSpace(string(respBody))
+				retryAfter := strings.TrimSpace(resp.Header.Get("Retry-After"))
+
+				reason := resp.Status
+				if resp.StatusCode == http.StatusTooManyRequests {
+					reason = "rate limited by analytics heartbeat endpoint (429 Too Many Requests)"
+				}
+
+				details := []string{reason}
+				if retryAfter != "" {
+					details = append(details, "retry-after="+retryAfter)
+				}
+				if bodyText != "" {
+					details = append(details, "response="+bodyText)
+				}
+				return struct{}{}, fmt.Errorf("analytics heartbeat request failed: %s", strings.Join(details, "; "))
 			}
 			return struct{}{}, nil
 		},
