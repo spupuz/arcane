@@ -67,8 +67,6 @@ func (s *SystemService) PruneAll(ctx context.Context, req system.PruneAllRequest
 		if err := s.pruneContainers(ctx, result); err != nil {
 			result.Errors = append(result.Errors, fmt.Sprintf("Container pruning failed: %v", err))
 			result.Success = false
-		} else {
-			result.ContainerSpaceReclaimed += result.SpaceReclaimed
 		}
 	}
 
