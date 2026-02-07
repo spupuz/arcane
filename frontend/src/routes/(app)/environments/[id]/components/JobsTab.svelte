@@ -50,9 +50,9 @@
 	const excludedContainers = new SvelteSet<string>();
 
 	const exclusionLabel = $derived.by(() => {
-		if (excludedContainers.size === 0) return 'Select containers...';
-		if (excludedContainers.size === 1) return '1 container excluded';
-		return `${excludedContainers.size} containers excluded`;
+		if (excludedContainers.size === 0) return m.auto_update_select_containers();
+		if (excludedContainers.size === 1) return m.auto_update_containers_excluded_one();
+		return m.auto_update_containers_excluded_many({ count: excludedContainers.size });
 	});
 
 	$effect(() => {
