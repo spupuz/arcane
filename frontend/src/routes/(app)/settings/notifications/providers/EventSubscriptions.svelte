@@ -7,7 +7,8 @@
 		providerId: string;
 		eventImageUpdate: boolean;
 		eventContainerUpdate: boolean;
-		eventPruneReport: boolean;
+		eventVulnerabilityFound: boolean;
+    eventPruneReport: boolean;
 		disabled?: boolean;
 	}
 
@@ -15,7 +16,8 @@
 		providerId,
 		eventImageUpdate = $bindable(),
 		eventContainerUpdate = $bindable(),
-		eventPruneReport = $bindable(),
+		eventVulnerabilityFound = $bindable(),
+    eventPruneReport = $bindable(),
 		disabled = false
 	}: Props = $props();
 </script>
@@ -44,6 +46,13 @@
 			{disabled}
 			label={m.notifications_event_prune_report_label()}
 			description={m.notifications_event_prune_report_description()}
+    />
+    <SwitchWithLabel
+			id="{providerId}-event-vulnerability-found"
+			bind:checked={eventVulnerabilityFound}
+			{disabled}
+			label={m.notifications_event_vulnerability_found_label()}
+			description={m.notifications_event_vulnerability_found_description()}
 		/>
 	</div>
 </div>

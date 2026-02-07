@@ -17,6 +17,8 @@ export type Settings = {
 	scheduledPruneVolumes?: boolean;
 	scheduledPruneNetworks?: boolean;
 	scheduledPruneBuildCache?: boolean;
+	vulnerabilityScanEnabled?: boolean;
+	vulnerabilityScanInterval?: number;
 	maxImageUploadSize: number;
 	baseServerUrl: string;
 	enableGravatar: boolean;
@@ -30,6 +32,7 @@ export type Settings = {
 	authLocalEnabled: boolean;
 	authSessionTimeout: number;
 	authPasswordPolicy: 'basic' | 'standard' | 'strong';
+	trivyImage: string;
 	oidcEnabled: boolean;
 	oidcClientId: string;
 	oidcClientSecret?: string;

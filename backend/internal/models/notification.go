@@ -38,9 +38,10 @@ func IsValidNotificationProvider(provider NotificationProvider) bool {
 type NotificationEventType string
 
 const (
-	NotificationEventImageUpdate     NotificationEventType = "image_update"
-	NotificationEventContainerUpdate NotificationEventType = "container_update"
-	NotificationEventPruneReport     NotificationEventType = "prune_report"
+	NotificationEventImageUpdate        NotificationEventType = "image_update"
+	NotificationEventContainerUpdate    NotificationEventType = "container_update"
+	NotificationEventVulnerabilityFound NotificationEventType = "vulnerability_found"
+  NotificationEventPruneReport        NotificationEventType = "prune_report"
 )
 
 type EmailTLSMode string
