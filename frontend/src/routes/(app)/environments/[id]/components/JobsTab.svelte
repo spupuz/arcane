@@ -9,12 +9,9 @@
 	import * as Card from '$lib/components/ui/card';
 	import { Label } from '$lib/components/ui/label';
 	import { Switch } from '$lib/components/ui/switch';
-	import { ArcaneButton } from '$lib/components/arcane-button';
-	import * as Command from '$lib/components/ui/command';
-	import * as Popover from '$lib/components/ui/popover';
-	import { cn } from '$lib/utils';
-	import { JobsIcon, AlertIcon, CheckIcon, ArrowsUpDownIcon } from '$lib/icons';
-	import type { JobListResponse, JobStatus, JobPrerequisite } from '$lib/types/job-schedule.type';
+	import SearchableSelect from '$lib/components/form/searchable-select.svelte';
+	import { JobsIcon, AlertIcon } from '$lib/icons';
+	import type { JobStatus, JobPrerequisite } from '$lib/types/job-schedule.type';
 	import type { ContainerSummaryDto } from '$lib/types/container.type';
 
 	let { formInputs, environmentId } = $props();
@@ -50,15 +47,19 @@
 		return result.data.data;
 	});
 
-	let openExclusionCombobox = $state(false);
-
 	const excludedContainers = new SvelteSet<string>();
+
+	const exclusionLabel = $derived.by(() => {
+		if (excludedContainers.size === 0) return 'Select containers...';
+		if (excludedContainers.size === 1) return '1 container excluded';
+		return `${excludedContainers.size} containers excluded`;
+	});
 
 	$effect(() => {
 		const savedValue = $formInputs.autoUpdateExcludedContainers?.value || '';
 		const names = savedValue
 			.split(',')
-			.map((s: string) => s.trim())
+			.map((s: string) => normalizeContainerName(s.trim()))
 			.filter(Boolean);
 
 		// Synchronize the SvelteSet with the form input value
@@ -93,10 +94,11 @@
 	}
 
 	function toggleContainerExclusion(containerName: string) {
-		if (excludedContainers.has(containerName)) {
-			excludedContainers.delete(containerName);
+		const normalizedName = normalizeContainerName(containerName);
+		if (excludedContainers.has(normalizedName)) {
+			excludedContainers.delete(normalizedName);
 		} else {
-			excludedContainers.add(containerName);
+			excludedContainers.add(normalizedName);
 		}
 
 		const newValue = Array.from(excludedContainers).join(',');
@@ -139,7 +141,34 @@
 	}
 
 	function getContainerName(c: ContainerSummaryDto): string {
-		return c.names[0] || c.id.substring(0, 12);
+		const rawName = c.names[0] || c.id.substring(0, 12);
+		return normalizeContainerName(rawName);
+	}
+
+	function normalizeContainerName(name: string): string {
+		return name.replace(/^\/+/, '');
+	}
+
+	function isContainerLabelExcluded(container: ContainerSummaryDto): boolean {
+		const labels = container.labels || {};
+		for (const [k, v] of Object.entries(labels)) {
+			if (k.toLowerCase() === 'com.getarcaneapp.arcane.updater') {
+				return ['false', '0', 'no', 'off'].includes(v.trim().toLowerCase());
+			}
+		}
+		return false;
+	}
+
+	function mapContainerToItem(container: ContainerSummaryDto) {
+		const name = getContainerName(container);
+		const labelExcluded = isContainerLabelExcluded(container);
+		return {
+			value: name,
+			label: name,
+			disabled: labelExcluded,
+			hint: labelExcluded ? '(Label)' : undefined,
+			selected: excludedContainers.has(name) || labelExcluded
+		};
 	}
 </script>
 
@@ -164,181 +193,140 @@
 						{#each categories as category (category.id)}
 							{@const categoryJobs = getJobsByCategory(category.id, jobsResponse.jobs)}
 							{#if categoryJobs.length > 0}
-							<div class="space-y-4">
-								<h3 class="text-muted-foreground text-sm font-semibold tracking-tight uppercase">
-									{category.label}
-								</h3>
-								<div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-2">
-									{#each categoryJobs as job (job.id)}
-										<JobCard
-											{job}
-											{environmentId}
-											isAgent={jobsResponse.isAgent}
-											onScheduleUpdate={loadJobs}
-											enabledOverride={getEnabledOverride(job)}
-										>
-											{#snippet headerAccessory()}
-												{#if job.id === 'image-polling'}
-													<Switch bind:checked={$formInputs.pollingEnabled.value} />
-												{:else if job.id === 'auto-update'}
-													<Switch bind:checked={$formInputs.autoUpdate.value} disabled={!$formInputs.pollingEnabled.value} />
-												{:else if job.id === 'scheduled-prune'}
-													<Switch bind:checked={$formInputs.scheduledPruneEnabled.value} />
-												{/if}
-											{/snippet}
+								<div class="space-y-4">
+									<h3 class="text-muted-foreground text-sm font-semibold tracking-tight uppercase">
+										{category.label}
+									</h3>
+									<div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-2">
+										{#each categoryJobs as job (job.id)}
+											<JobCard
+												{job}
+												{environmentId}
+												isAgent={jobsResponse.isAgent}
+												onScheduleUpdate={loadJobs}
+												enabledOverride={getEnabledOverride(job)}
+											>
+												{#snippet headerAccessory()}
+													{#if job.id === 'image-polling'}
+														<Switch bind:checked={$formInputs.pollingEnabled.value} />
+													{:else if job.id === 'auto-update'}
+														<Switch bind:checked={$formInputs.autoUpdate.value} disabled={!$formInputs.pollingEnabled.value} />
+													{:else if job.id === 'scheduled-prune'}
+														<Switch bind:checked={$formInputs.scheduledPruneEnabled.value} />
+													{/if}
+												{/snippet}
 
-											{#if job.id === 'auto-update' && $formInputs.autoUpdate.value}
-												<div class="border-border/20 space-y-3 border-t pt-3">
-													<div class="space-y-1">
-														<Label class="text-sm font-medium">Excluded Containers</Label>
-														<p class="text-muted-foreground text-xs">Select containers to exclude from automatic updates.</p>
-													</div>
-
-													<Popover.Root bind:open={openExclusionCombobox}>
-														<Popover.Trigger>
-															{#snippet child({ props })}
-																<ArcaneButton
-																	{...props}
-																	action="base"
-																	role="combobox"
-																	aria-expanded={openExclusionCombobox}
-																	class="w-full justify-between"
-																	customLabel={excludedContainers.size === 0
-																		? 'Select containers...'
-																		: excludedContainers.size === 1
-																			? '1 container excluded'
-																			: `${excludedContainers.size} containers excluded`}
-																>
-																	<ArrowsUpDownIcon class="ml-2 size-4 shrink-0 opacity-50" />
-																</ArcaneButton>
-															{/snippet}
-														</Popover.Trigger>
-														<Popover.Content class="w-full p-0">
-															<Command.Root>
-																<Command.Input placeholder="Search containers..." />
-																	<Command.List>
-																		{#await containersPromise}
-																			<div class="flex items-center justify-center p-4">
-																				<Spinner class="size-4" />
-																			</div>
-																		{:then containers}
-																			{#if containers.length === 0}
-																				<Command.Empty>No containers found.</Command.Empty>
-																			{/if}
-																			<Command.Group>
-																				{#each containers as container (container.id)}
-																					{@const name = getContainerName(container)}
-																					{@const labelExcluded = (() => {
-																						const labels = container.labels || {};
-																						for (const [k, v] of Object.entries(labels)) {
-																							if (k.toLowerCase() === 'com.getarcaneapp.arcane.updater') {
-																								return ['false', '0', 'no', 'off'].includes(
-																									v.trim().toLowerCase()
-																								);
-																							}
-																						}
-																						return false;
-																					})()}
-																					{@const isExcluded = excludedContainers.has(name) || labelExcluded}
-
-																					<Command.Item
-																						value={name}
-																						onSelect={() => {
-																							if (labelExcluded) return;
-																							toggleContainerExclusion(name);
-																						}}
-																						disabled={labelExcluded}
-																					>
-																						<CheckIcon
-																							class={cn(
-																								'mr-2 size-4',
-																								isExcluded ? 'opacity-100' : 'opacity-0'
-																							)}
-																						/>
-																						<span class={cn(labelExcluded && 'text-muted-foreground')}
-																							>{name}</span
-																						>
-																						{#if labelExcluded}
-																							<span class="ml-auto text-xs text-muted-foreground"
-																								>(Label)</span
-																							>
-																						{/if}
-																					</Command.Item>
-																				{/each}
-																			</Command.Group>
-																		{:catch error}
-																			<div class="text-destructive p-4 text-xs">
-																				{error.message || 'Failed to load containers'}
-																			</div>
-																		{/await}
-																	</Command.List>
-															</Command.Root>
-														</Popover.Content>
-													</Popover.Root>
-												</div>
-											{/if}
-
-											{#if job.id === 'scheduled-prune'}
-												{#if $formInputs.scheduledPruneEnabled.value}
-													<div class="border-border/20 space-y-4 border-t pt-3">
-														<div class="grid gap-3 sm:grid-cols-2">
-															<div class="bg-muted/20 ring-border/20 flex items-start justify-between rounded-lg p-3 ring-1">
-																<div class="space-y-0.5">
-																	<Label class="text-sm font-medium">{m.scheduled_prune_containers_label()}</Label>
-																	<p class="text-muted-foreground text-xs">{m.scheduled_prune_containers_description()}</p>
-																</div>
-																<Switch bind:checked={$formInputs.scheduledPruneContainers.value} />
-															</div>
-															<div class="bg-muted/20 ring-border/20 flex items-start justify-between rounded-lg p-3 ring-1">
-																<div class="space-y-0.5">
-																	<Label class="text-sm font-medium">{m.scheduled_prune_images_label()}</Label>
-																	<p class="text-muted-foreground text-xs">{m.scheduled_prune_images_description()}</p>
-																</div>
-																<Switch bind:checked={$formInputs.scheduledPruneImages.value} />
-															</div>
-															<div class="bg-muted/20 ring-border/20 flex items-start justify-between rounded-lg p-3 ring-1">
-																<div class="space-y-0.5">
-																	<Label class="text-sm font-medium">{m.scheduled_prune_volumes_label()}</Label>
-																	<p class="text-muted-foreground text-xs">{m.scheduled_prune_volumes_description()}</p>
-																</div>
-																<Switch bind:checked={$formInputs.scheduledPruneVolumes.value} />
-															</div>
-															<div class="bg-muted/20 ring-border/20 flex items-start justify-between rounded-lg p-3 ring-1">
-																<div class="space-y-0.5">
-																	<Label class="text-sm font-medium">{m.scheduled_prune_networks_label()}</Label>
-																	<p class="text-muted-foreground text-xs">{m.scheduled_prune_networks_description()}</p>
-																</div>
-																<Switch bind:checked={$formInputs.scheduledPruneNetworks.value} />
-															</div>
-															<div class="bg-muted/20 ring-border/20 flex items-start justify-between rounded-lg p-3 ring-1">
-																<div class="space-y-0.5">
-																	<Label class="text-sm font-medium">{m.scheduled_prune_build_cache_label()}</Label>
-																	<p class="text-muted-foreground text-xs">{m.scheduled_prune_build_cache_description()}</p>
-																</div>
-																<Switch bind:checked={$formInputs.scheduledPruneBuildCache.value} />
-															</div>
+												{#if job.id === 'auto-update' && $formInputs.autoUpdate.value}
+													<div class="border-border/20 space-y-3 border-t pt-3">
+														<div class="space-y-1">
+															<Label class="text-sm font-medium">Excluded Containers</Label>
+															<p class="text-muted-foreground text-xs">Select containers to exclude from automatic updates.</p>
 														</div>
-														{#if $formInputs.scheduledPruneVolumes.value}
-															<div
-																class="flex items-start gap-3 rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-amber-900 dark:text-amber-200"
-															>
-																<AlertIcon class="mt-0.5 size-4 shrink-0 text-amber-600 dark:text-amber-400" />
-																<div class="space-y-1 text-sm">
-																	<p class="font-medium">{m.scheduled_prune_volumes_warning()}</p>
-																</div>
-															</div>
-														{/if}
+
+														{#await containersPromise}
+															<SearchableSelect
+																items={[]}
+																displayText={exclusionLabel}
+																placeholder={excludedContainers.size === 0}
+																isLoading={true}
+																emptyText="Loading containers..."
+																size="sm"
+																class="w-1/2"
+																listClass="max-h-36"
+																inputClass="h-8 py-1 text-sm"
+																itemClass="py-1 text-sm"
+																onSelect={(value) => toggleContainerExclusion(value)}
+															/>
+														{:then containers}
+															<SearchableSelect
+																items={containers.map(mapContainerToItem)}
+																displayText={exclusionLabel}
+																placeholder={excludedContainers.size === 0}
+																size="sm"
+																class="w-1/2"
+																listClass="max-h-36"
+																inputClass="h-8 py-1 text-sm"
+																itemClass="py-1 text-sm"
+																onSelect={(value) => toggleContainerExclusion(value)}
+															/>
+														{:catch error}
+															<SearchableSelect
+																items={[]}
+																displayText={exclusionLabel}
+																placeholder={excludedContainers.size === 0}
+																emptyText={error.message || 'Failed to load containers'}
+																size="sm"
+																class="w-1/2"
+																listClass="max-h-36"
+																inputClass="h-8 py-1 text-sm"
+																itemClass="py-1 text-sm"
+																onSelect={(value) => toggleContainerExclusion(value)}
+															/>
+														{/await}
 													</div>
 												{/if}
-											{/if}
-										</JobCard>
-									{/each}
+
+												{#if job.id === 'scheduled-prune'}
+													{#if $formInputs.scheduledPruneEnabled.value}
+														<div class="border-border/20 space-y-4 border-t pt-3">
+															<div class="grid gap-3 sm:grid-cols-2">
+																<div class="bg-muted/20 ring-border/20 flex items-start justify-between rounded-lg p-3 ring-1">
+																	<div class="space-y-0.5">
+																		<Label class="text-sm font-medium">{m.scheduled_prune_containers_label()}</Label>
+																		<p class="text-muted-foreground text-xs">{m.scheduled_prune_containers_description()}</p>
+																	</div>
+																	<Switch bind:checked={$formInputs.scheduledPruneContainers.value} />
+																</div>
+																<div class="bg-muted/20 ring-border/20 flex items-start justify-between rounded-lg p-3 ring-1">
+																	<div class="space-y-0.5">
+																		<Label class="text-sm font-medium">{m.scheduled_prune_images_label()}</Label>
+																		<p class="text-muted-foreground text-xs">{m.scheduled_prune_images_description()}</p>
+																	</div>
+																	<Switch bind:checked={$formInputs.scheduledPruneImages.value} />
+																</div>
+																<div class="bg-muted/20 ring-border/20 flex items-start justify-between rounded-lg p-3 ring-1">
+																	<div class="space-y-0.5">
+																		<Label class="text-sm font-medium">{m.scheduled_prune_volumes_label()}</Label>
+																		<p class="text-muted-foreground text-xs">{m.scheduled_prune_volumes_description()}</p>
+																	</div>
+																	<Switch bind:checked={$formInputs.scheduledPruneVolumes.value} />
+																</div>
+																<div class="bg-muted/20 ring-border/20 flex items-start justify-between rounded-lg p-3 ring-1">
+																	<div class="space-y-0.5">
+																		<Label class="text-sm font-medium">{m.scheduled_prune_networks_label()}</Label>
+																		<p class="text-muted-foreground text-xs">{m.scheduled_prune_networks_description()}</p>
+																	</div>
+																	<Switch bind:checked={$formInputs.scheduledPruneNetworks.value} />
+																</div>
+																<div class="bg-muted/20 ring-border/20 flex items-start justify-between rounded-lg p-3 ring-1">
+																	<div class="space-y-0.5">
+																		<Label class="text-sm font-medium">{m.scheduled_prune_build_cache_label()}</Label>
+																		<p class="text-muted-foreground text-xs">{m.scheduled_prune_build_cache_description()}</p>
+																	</div>
+																	<Switch bind:checked={$formInputs.scheduledPruneBuildCache.value} />
+																</div>
+															</div>
+															{#if $formInputs.scheduledPruneVolumes.value}
+																<div
+																	class="flex items-start gap-3 rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-amber-900 dark:text-amber-200"
+																>
+																	<AlertIcon class="mt-0.5 size-4 shrink-0 text-amber-600 dark:text-amber-400" />
+																	<div class="space-y-1 text-sm">
+																		<p class="font-medium">{m.scheduled_prune_volumes_warning()}</p>
+																	</div>
+																</div>
+															{/if}
+														</div>
+													{/if}
+												{/if}
+											</JobCard>
+										{/each}
+									</div>
 								</div>
-							</div>
-						{/if}
-					{/each}
-				</div>
-			{/if}
+							{/if}
+						{/each}
+					</div>
+				{/if}
 			{:catch error}
 				<div class="border-destructive/50 bg-destructive/10 text-destructive rounded-lg border p-4">
 					{error.message || error}
