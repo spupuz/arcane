@@ -106,7 +106,7 @@ func (s *AppriseService) SendNotification(ctx context.Context, title, body, form
 		if settings.ContainerUpdateTag != "" {
 			tags = []string{settings.ContainerUpdateTag}
 		}
-    
+
 	case models.NotificationEventPruneReport:
 		// Handle tags for prune report if needed, or leave empty
 
