@@ -1,5 +1,4 @@
 <script lang="ts">
-	import { SvelteSet } from 'svelte/reactivity';
 	import { jobScheduleService } from '$lib/services/job-schedule-service';
 	import { containerService } from '$lib/services/container-service';
 	import { tryCatch } from '$lib/utils/try-catch';
@@ -46,29 +45,22 @@
 		return result.data.data;
 	});
 
-	const excludedContainers = new SvelteSet<string>();
+	// Use $derived to compute the excluded containers set from form input (avoids $effect state mutation)
+	const excludedContainers = $derived.by(() => {
+		const savedValue = $formInputs.autoUpdateExcludedContainers?.value || '';
+		const names = savedValue
+			.split(',')
+			.map((s: string) => normalizeContainerName(s.trim()))
+			.filter(Boolean);
+		return new Set<string>(names);
+	});
+
 	let containerSearchQuery = $state('');
 
 	const exclusionLabel = $derived.by(() => {
 		if (excludedContainers.size === 0) return m.auto_update_select_containers();
 		if (excludedContainers.size === 1) return m.auto_update_containers_excluded_one();
 		return m.auto_update_containers_excluded_many({ count: excludedContainers.size });
-	});
-
-	$effect(() => {
-		const savedValue = $formInputs.autoUpdateExcludedContainers?.value || '';
-		const names = savedValue
-			.split(',')
-			.map((s: string) => normalizeContainerName(s.trim()))
-			.filter(Boolean);
-
-		// Synchronize the SvelteSet with the form input value
-		// Only update if there are actual changes to avoid unnecessary reactivity
-		const currentNames = Array.from(excludedContainers);
-		if (names.length !== currentNames.length || names.some((n: string) => !excludedContainers.has(n))) {
-			excludedContainers.clear();
-			names.forEach((n: string) => excludedContainers.add(n));
-		}
 	});
 
 	function resolveSettingsUrl(job: JobStatus, prereq: JobPrerequisite): string | undefined {
@@ -97,13 +89,15 @@
 
 	function toggleContainerExclusion(containerName: string) {
 		const normalizedName = normalizeContainerName(containerName);
-		if (excludedContainers.has(normalizedName)) {
-			excludedContainers.delete(normalizedName);
+		const currentExcluded = new Set(excludedContainers);
+		
+		if (currentExcluded.has(normalizedName)) {
+			currentExcluded.delete(normalizedName);
 		} else {
-			excludedContainers.add(normalizedName);
+			currentExcluded.add(normalizedName);
 		}
 
-		const newValue = Array.from(excludedContainers).join(',');
+		const newValue = Array.from(currentExcluded).join(',');
 		if ($formInputs.autoUpdateExcludedContainers) {
 			$formInputs.autoUpdateExcludedContainers.value = newValue;
 		}

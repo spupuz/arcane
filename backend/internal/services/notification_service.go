@@ -2579,23 +2579,23 @@ func (s *NotificationService) SendPruneReportNotification(ctx context.Context, r
 		var sendErr error
 		switch setting.Provider {
 		case models.NotificationProviderDiscord:
-			sendErr = s.sendDiscordPruneNotification(ctx, result, setting.Config)
+			sendErr = s.sendDiscordPruneNotificationInternal(ctx, result, setting.Config)
 		case models.NotificationProviderEmail:
-			sendErr = s.sendEmailPruneNotification(ctx, result, setting.Config)
+			sendErr = s.sendEmailPruneNotificationInternal(ctx, result, setting.Config)
 		case models.NotificationProviderTelegram:
-			sendErr = s.sendTelegramPruneNotification(ctx, result, setting.Config)
+			sendErr = s.sendTelegramPruneNotificationInternal(ctx, result, setting.Config)
 		case models.NotificationProviderSignal:
-			sendErr = s.sendSignalPruneNotification(ctx, result, setting.Config)
+			sendErr = s.sendSignalPruneNotificationInternal(ctx, result, setting.Config)
 		case models.NotificationProviderSlack:
-			sendErr = s.sendSlackPruneNotification(ctx, result, setting.Config)
+			sendErr = s.sendSlackPruneNotificationInternal(ctx, result, setting.Config)
 		case models.NotificationProviderNtfy:
-			sendErr = s.sendNtfyPruneNotification(ctx, result, setting.Config)
+			sendErr = s.sendNtfyPruneNotificationInternal(ctx, result, setting.Config)
 		case models.NotificationProviderPushover:
-			sendErr = s.sendPushoverPruneNotification(ctx, result, setting.Config)
+			sendErr = s.sendPushoverPruneNotificationInternal(ctx, result, setting.Config)
 		case models.NotificationProviderGotify:
-			sendErr = s.sendGotifyPruneNotification(ctx, result, setting.Config)
+			sendErr = s.sendGotifyPruneNotificationInternal(ctx, result, setting.Config)
 		case models.NotificationProviderGeneric:
-			sendErr = s.sendGenericPruneNotification(ctx, result, setting.Config)
+			sendErr = s.sendGenericPruneNotificationInternal(ctx, result, setting.Config)
 		default:
 			slog.WarnContext(ctx, "Unknown notification provider", "provider", setting.Provider)
 			continue
@@ -2636,7 +2636,7 @@ func (s *NotificationService) formatBytesInternal(bytes uint64) string {
 	return fmt.Sprintf("%.1f %cB", float64(bytes)/float64(div), "KMGTPE"[exp])
 }
 
-func (s *NotificationService) sendDiscordPruneNotification(ctx context.Context, result *system.PruneAllResult, config models.JSON) error {
+func (s *NotificationService) sendDiscordPruneNotificationInternal(ctx context.Context, result *system.PruneAllResult, config models.JSON) error {
 	var discordConfig models.DiscordConfig
 	if err := s.unmarshalConfigInternal(config, &discordConfig); err != nil {
 		return err
@@ -2648,13 +2648,13 @@ func (s *NotificationService) sendDiscordPruneNotification(ctx context.Context, 
 
 	s.decryptDiscordTokenInternal(&discordConfig)
 
-	message := fmt.Sprintf("**🧹 System Prune Report**\n\n"+
+	message := fmt.Sprintf("**System Prune Report**\n\n"+
 		"**Total Space Reclaimed:** %s\n\n"+
 		"**Breakdown:**\n"+
-		"- 📦 **Containers:** %s\n"+
-		"- 🖼️ **Images:** %s\n"+
-		"- 💾 **Volumes:** %s\n"+
-		"- 🏗️ **Build Cache:** %s\n",
+		"- **Containers:** %s\n"+
+		"- **Images:** %s\n"+
+		"- **Volumes:** %s\n"+
+		"- **Build Cache:** %s\n",
 		s.formatBytesInternal(result.SpaceReclaimed),
 		s.formatBytesInternal(result.ContainerSpaceReclaimed),
 		s.formatBytesInternal(result.ImageSpaceReclaimed),
@@ -2668,7 +2668,7 @@ func (s *NotificationService) sendDiscordPruneNotification(ctx context.Context, 
 	return nil
 }
 
-func (s *NotificationService) sendTelegramPruneNotification(ctx context.Context, result *system.PruneAllResult, config models.JSON) error {
+func (s *NotificationService) sendTelegramPruneNotificationInternal(ctx context.Context, result *system.PruneAllResult, config models.JSON) error {
 	var telegramConfig models.TelegramConfig
 	if err := s.unmarshalConfigInternal(config, &telegramConfig); err != nil {
 		return err
@@ -2680,13 +2680,13 @@ func (s *NotificationService) sendTelegramPruneNotification(ctx context.Context,
 
 	s.decryptTelegramTokenInternal(&telegramConfig)
 
-	message := fmt.Sprintf("🧹 <b>System Prune Report</b>\n\n"+
+	message := fmt.Sprintf("<b>System Prune Report</b>\n\n"+
 		"<b>Total Space Reclaimed:</b> %s\n\n"+
 		"<b>Breakdown:</b>\n"+
-		"- 📦 <b>Containers:</b> %s\n"+
-		"- 🖼️ <b>Images:</b> %s\n"+
-		"- 💾 <b>Volumes:</b> %s\n"+
-		"- 🏗️ <b>Build Cache:</b> %s\n",
+		"- <b>Containers:</b> %s\n"+
+		"- <b>Images:</b> %s\n"+
+		"- <b>Volumes:</b> %s\n"+
+		"- <b>Build Cache:</b> %s\n",
 		s.formatBytesInternal(result.SpaceReclaimed),
 		s.formatBytesInternal(result.ContainerSpaceReclaimed),
 		s.formatBytesInternal(result.ImageSpaceReclaimed),
@@ -2704,7 +2704,7 @@ func (s *NotificationService) sendTelegramPruneNotification(ctx context.Context,
 	return nil
 }
 
-func (s *NotificationService) sendEmailPruneNotification(ctx context.Context, result *system.PruneAllResult, config models.JSON) error {
+func (s *NotificationService) sendEmailPruneNotificationInternal(ctx context.Context, result *system.PruneAllResult, config models.JSON) error {
 	var emailConfig models.EmailConfig
 	if err := s.unmarshalConfigInternal(config, &emailConfig); err != nil {
 		return err
@@ -2716,7 +2716,7 @@ func (s *NotificationService) sendEmailPruneNotification(ctx context.Context, re
 
 	s.decryptEmailPasswordInternal(&emailConfig)
 
-	htmlBody, _, err := s.renderPruneReportEmailTemplate(result)
+	htmlBody, _, err := s.renderPruneReportEmailTemplateInternal(result)
 	if err != nil {
 		return fmt.Errorf("failed to render email template: %w", err)
 	}
@@ -2729,7 +2729,7 @@ func (s *NotificationService) sendEmailPruneNotification(ctx context.Context, re
 	return nil
 }
 
-func (s *NotificationService) renderPruneReportEmailTemplate(result *system.PruneAllResult) (string, string, error) {
+func (s *NotificationService) renderPruneReportEmailTemplateInternal(result *system.PruneAllResult) (string, string, error) {
 	appURL := s.config.GetAppURL()
 	logoURL := appURL + logoURLPath
 	data := map[string]interface{}{
@@ -2746,13 +2746,13 @@ func (s *NotificationService) renderPruneReportEmailTemplate(result *system.Prun
 	return s.renderTemplatesInternal("prune-report", data)
 }
 
-func (s *NotificationService) sendSignalPruneNotification(ctx context.Context, result *system.PruneAllResult, config models.JSON) error {
+func (s *NotificationService) sendSignalPruneNotificationInternal(ctx context.Context, result *system.PruneAllResult, config models.JSON) error {
 	var signalConfig models.SignalConfig
 	if err := s.unmarshalConfigInternal(config, &signalConfig); err != nil {
 		return err
 	}
 
-	message := fmt.Sprintf("🧹 System Prune Report\n\n"+
+	message := fmt.Sprintf("System Prune Report\n\n"+
 		"Total Space Reclaimed: %s\n\n"+
 		"Breakdown:\n"+
 		"- Containers: %s\n"+
@@ -2768,19 +2768,19 @@ func (s *NotificationService) sendSignalPruneNotification(ctx context.Context, r
 	return notifications.SendSignal(ctx, signalConfig, message)
 }
 
-func (s *NotificationService) sendSlackPruneNotification(ctx context.Context, result *system.PruneAllResult, config models.JSON) error {
+func (s *NotificationService) sendSlackPruneNotificationInternal(ctx context.Context, result *system.PruneAllResult, config models.JSON) error {
 	var slackConfig models.SlackConfig
 	if err := s.unmarshalConfigInternal(config, &slackConfig); err != nil {
 		return err
 	}
 
-	message := fmt.Sprintf("*🧹 System Prune Report*\n\n"+
+	message := fmt.Sprintf("*System Prune Report*\n\n"+
 		"*Total Space Reclaimed:* %s\n\n"+
 		"*Breakdown:*\n"+
-		"- 📦 *Containers:* %s\n"+
-		"- 🖼️ *Images:* %s\n"+
-		"- 💾 *Volumes:* %s\n"+
-		"- 🏗️ *Build Cache:* %s\n",
+		"- *Containers:* %s\n"+
+		"- *Images:* %s\n"+
+		"- *Volumes:* %s\n"+
+		"- *Build Cache:* %s\n",
 		s.formatBytesInternal(result.SpaceReclaimed),
 		s.formatBytesInternal(result.ContainerSpaceReclaimed),
 		s.formatBytesInternal(result.ImageSpaceReclaimed),
@@ -2790,7 +2790,7 @@ func (s *NotificationService) sendSlackPruneNotification(ctx context.Context, re
 	return notifications.SendSlack(ctx, slackConfig, message)
 }
 
-func (s *NotificationService) sendNtfyPruneNotification(ctx context.Context, result *system.PruneAllResult, config models.JSON) error {
+func (s *NotificationService) sendNtfyPruneNotificationInternal(ctx context.Context, result *system.PruneAllResult, config models.JSON) error {
 	var ntfyConfig models.NtfyConfig
 	if err := s.unmarshalConfigInternal(config, &ntfyConfig); err != nil {
 		return err
@@ -2814,7 +2814,7 @@ func (s *NotificationService) sendNtfyPruneNotification(ctx context.Context, res
 	return notifications.SendNtfy(ctx, ntfyConfig, message)
 }
 
-func (s *NotificationService) sendPushoverPruneNotification(ctx context.Context, result *system.PruneAllResult, config models.JSON) error {
+func (s *NotificationService) sendPushoverPruneNotificationInternal(ctx context.Context, result *system.PruneAllResult, config models.JSON) error {
 	var pushoverConfig models.PushoverConfig
 	if err := s.unmarshalConfigInternal(config, &pushoverConfig); err != nil {
 		return err
@@ -2839,7 +2839,7 @@ func (s *NotificationService) sendPushoverPruneNotification(ctx context.Context,
 	return notifications.SendPushover(ctx, pushoverConfig, message)
 }
 
-func (s *NotificationService) sendGotifyPruneNotification(ctx context.Context, result *system.PruneAllResult, config models.JSON) error {
+func (s *NotificationService) sendGotifyPruneNotificationInternal(ctx context.Context, result *system.PruneAllResult, config models.JSON) error {
 	var gotifyConfig models.GotifyConfig
 	if err := s.unmarshalConfigInternal(config, &gotifyConfig); err != nil {
 		return err
@@ -2864,7 +2864,7 @@ func (s *NotificationService) sendGotifyPruneNotification(ctx context.Context, r
 	return notifications.SendGotify(ctx, gotifyConfig, message)
 }
 
-func (s *NotificationService) sendGenericPruneNotification(ctx context.Context, result *system.PruneAllResult, config models.JSON) error {
+func (s *NotificationService) sendGenericPruneNotificationInternal(ctx context.Context, result *system.PruneAllResult, config models.JSON) error {
 	var genericConfig models.GenericConfig
 	if err := s.unmarshalConfigInternal(config, &genericConfig); err != nil {
 		return err
