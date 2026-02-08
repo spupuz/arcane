@@ -9,7 +9,6 @@
 	import * as Card from '$lib/components/ui/card';
 	import { Label } from '$lib/components/ui/label';
 	import { Switch } from '$lib/components/ui/switch';
-	import SearchableSelect from '$lib/components/form/searchable-select.svelte';
 	import { JobsIcon, AlertIcon } from '$lib/icons';
 	import type { JobStatus, JobPrerequisite } from '$lib/types/job-schedule.type';
 	import type { ContainerSummaryDto } from '$lib/types/container.type';
@@ -48,6 +47,7 @@
 	});
 
 	const excludedContainers = new SvelteSet<string>();
+	let containerSearchQuery = $state('');
 
 	const exclusionLabel = $derived.by(() => {
 		if (excludedContainers.size === 0) return m.auto_update_select_containers();
@@ -227,48 +227,69 @@
 													<div class="border-border/20 space-y-3 border-t pt-3">
 														<div class="space-y-1">
 															<Label class="text-sm font-medium">Excluded Containers</Label>
+									{#if excludedContainers.size > 0}
+										<span class="bg-primary/10 text-primary ml-2 rounded-full px-2 py-0.5 text-xs font-medium">{excludedContainers.size} excluded</span>
+									{/if}
 															<p class="text-muted-foreground text-xs">Select containers to exclude from automatic updates.</p>
 														</div>
 
 														{#await containersPromise}
-															<SearchableSelect
-																items={[]}
-																displayText={exclusionLabel}
-																placeholder={excludedContainers.size === 0}
-																isLoading={true}
-																emptyText="Loading containers..."
-																size="sm"
-																class="w-1/2"
-																listClass="max-h-36"
-																inputClass="h-8 py-1 text-sm"
-																itemClass="py-1 text-sm"
-																onSelect={(value) => toggleContainerExclusion(value)}
-															/>
+															<div class="border-input bg-background rounded-md border p-2">
+																<div class="flex items-center justify-center py-4">
+																	<Spinner class="size-4" />
+																	<span class="text-muted-foreground ml-2 text-sm">Loading containers...</span>
+																</div>
+															</div>
 														{:then containers}
-															<SearchableSelect
-																items={containers.map(mapContainerToItem)}
-																displayText={exclusionLabel}
-																placeholder={excludedContainers.size === 0}
-																size="sm"
-																class="w-1/2"
-																listClass="max-h-36"
-																inputClass="h-8 py-1 text-sm"
-																itemClass="py-1 text-sm"
-																onSelect={(value) => toggleContainerExclusion(value)}
-															/>
+															{@const allContainerItems = containers.map(mapContainerToItem)}
+															{@const filteredContainerItems = containerSearchQuery
+																? allContainerItems.filter((item) => item.label.toLowerCase().includes(containerSearchQuery.toLowerCase()))
+																: allContainerItems}
+															<div class="border-input bg-background rounded-md border">
+																<div class="border-b p-2">
+																	<input
+																		type="text"
+																		placeholder="Search containers..."
+																		bind:value={containerSearchQuery}
+																		class="bg-transparent text-sm outline-none placeholder:text-muted-foreground w-full"
+																	/>
+																</div>
+																<div class="max-h-48 overflow-y-auto p-1">
+																	{#if filteredContainerItems.length === 0}
+																		<div class="text-muted-foreground py-2 text-center text-sm">No containers found</div>
+																	{:else}
+																		{#each filteredContainerItems as item (item.value)}
+																			<button
+																				type="button"
+																				class="hover:bg-accent flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-sm transition-colors"
+																				class:opacity-50={item.disabled}
+																				disabled={item.disabled}
+																				onclick={() => toggleContainerExclusion(item.value)}
+																			>
+																				<div
+																					class="border-primary flex size-4 shrink-0 items-center justify-center rounded-sm border {item.selected
+																						? 'bg-primary text-primary-foreground'
+																						: 'opacity-50'}"
+																				>
+																					{#if item.selected}
+																						<svg class="size-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+																							<polyline points="20 6 9 17 4 12"></polyline>
+																						</svg>
+																					{/if}
+																				</div>
+																				<span class="truncate" class:text-muted-foreground={item.disabled}>{item.label}</span>
+																				{#if item.hint}
+																					<span class="text-muted-foreground ml-auto text-xs">{item.hint}</span>
+																				{/if}
+																			</button>
+																		{/each}
+																	{/if}
+																</div>
+															</div>
 														{:catch error}
-															<SearchableSelect
-																items={[]}
-																displayText={exclusionLabel}
-																placeholder={excludedContainers.size === 0}
-																emptyText={error.message || 'Failed to load containers'}
-																size="sm"
-																class="w-1/2"
-																listClass="max-h-36"
-																inputClass="h-8 py-1 text-sm"
-																itemClass="py-1 text-sm"
-																onSelect={(value) => toggleContainerExclusion(value)}
-															/>
+															<div class="border-destructive/50 bg-destructive/10 text-destructive rounded-md border p-3 text-sm">
+																{error.message || 'Failed to load containers'}
+															</div>
 														{/await}
 													</div>
 												{/if}
