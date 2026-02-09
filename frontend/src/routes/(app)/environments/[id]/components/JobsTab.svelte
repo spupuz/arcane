@@ -54,12 +54,6 @@
 
 
 
-	const exclusionLabel = $derived.by(() => {
-		if (excludedContainers.size === 0) return m.auto_update_select_containers();
-		if (excludedContainers.size === 1) return m.auto_update_containers_excluded_one();
-		return m.auto_update_containers_excluded_many({ count: excludedContainers.size });
-	});
-
 	$effect(() => {
 		const savedValue = $formInputs.autoUpdateExcludedContainers?.value || '';
 		const names = savedValue
@@ -147,7 +141,7 @@
 				return $formInputs.vulnerabilityScanEnabled.value;
 			default:
 				return undefined;
-		}
+			}
 	}
 
 	function getContainerName(c: ContainerSummaryDto): string {
@@ -231,7 +225,14 @@
 													{#if job.id === 'auto-update' && $formInputs.autoUpdate.value}
 														<div class="border-border/20 space-y-3 border-t pt-3">
 															<div class="space-y-1">
-																<Label class="text-sm font-medium">Excluded Containers</Label>
+																<Label class="text-sm font-medium">
+																	Excluded Containers
+																	{#await containersPromise then containers}
+																		<span class="text-muted-foreground ml-1 font-normal">
+																			({containers.filter((c) => excludedContainers.has(getContainerName(c)) || isContainerLabelExcluded(c)).length})
+																		</span>
+																	{/await}
+																</Label>
 																<p class="text-muted-foreground text-xs">Select containers to exclude from automatic updates.</p>
 															</div>
 
