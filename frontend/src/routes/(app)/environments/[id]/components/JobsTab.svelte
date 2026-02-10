@@ -171,7 +171,7 @@
 			label: name,
 			disabled: labelExcluded,
 			hint: labelExcluded ? '(Label)' : undefined,
-			selected: excludedContainers.has(name) || labelExcluded
+			selected: excludedContainers.has(name)
 		};
 	}
 </script>
@@ -226,14 +226,14 @@
 														<div class="border-border/20 space-y-3 border-t pt-3">
 															<div class="space-y-1">
 																<Label class="text-sm font-medium">
-																	Excluded Containers
+																	{m.auto_update_excluded_containers()}
 																	{#await containersPromise then containers}
 																		<span class="text-muted-foreground ml-1 font-normal">
-																			({containers.filter((c) => excludedContainers.has(getContainerName(c)) || isContainerLabelExcluded(c)).length})
+																			({containers.filter((c) => excludedContainers.has(getContainerName(c))).length})
 																		</span>
 																	{/await}
 																</Label>
-																<p class="text-muted-foreground text-xs">Select containers to exclude from automatic updates.</p>
+																<p class="text-muted-foreground text-xs">{m.auto_update_exclude_description()}</p>
 															</div>
 
 															<div class="rounded-md border p-2">
@@ -257,7 +257,7 @@
 																			
 																			{#if filteredItems.length === 0}
 																				<p class="text-muted-foreground text-center text-sm py-4">
-																					{searchTerm ? 'No matching containers found' : 'No containers found'}
+																					{m.common_no_results_found()}
 																				</p>
 																			{:else}
 																				{#each filteredItems as container (container.value)}
@@ -270,7 +270,7 @@
 																						/>
 																						<Label
 																							for="container-{container.value}"
-																							class="text-sm font-normal {container.disabled ? 'text-muted-foreground line-through' : ''}"
+																							class="text-sm font-normal {container.disabled ? 'text-muted-foreground' : ''}"
 																						>
 																							{container.label}
 																							{#if container.hint}
